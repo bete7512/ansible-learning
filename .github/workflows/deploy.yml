@@ -58,13 +58,6 @@ jobs:
         cd ansible
         ansible webservers -m ping -v
 
-    - name: Copy application files to Ansible role
-      run: |
-        # Copy source files that the golang-app role expects
-        cp main.go ansible/roles/golang-app/files/
-        cp Dockerfile ansible/roles/golang-app/files/
-        cp go.mod ansible/roles/golang-app/files/ 2>/dev/null || echo "go.mod not found, will be created during build"
-
     - name: Run infrastructure setup
       run: |
         cd ansible

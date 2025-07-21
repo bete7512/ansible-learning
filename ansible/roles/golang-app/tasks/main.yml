@@ -2,7 +2,7 @@
 ---
 - name: Copy application source files
   copy:
-    src: "{{ item }}"
+    src: "{{ playbook_dir }}/../{{ item }}"
     dest: "{{ app_deploy_path }}/"
     owner: "{{ app_name }}"
     group: "{{ app_name }}"
@@ -10,6 +10,7 @@
   loop:
     - main.go
     - Dockerfile
+    - go.mod
   notify: rebuild app
   tags: [app, files]
 
