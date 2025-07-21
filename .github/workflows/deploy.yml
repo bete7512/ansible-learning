@@ -49,24 +49,20 @@ jobs:
     - name: Update Ansible inventory with current host
       run: |
         # Update the production inventory with current host from secrets
-        cd ansible
-        sed -i "s/userapi ansible_host=.*/userapi ansible_host=${{ secrets.HOST }} ansible_user=${{ secrets.USER }}/" inventories/production/hosts
+        sed -i "s/userapi ansible_host=.*/userapi ansible_host=${{ secrets.HOST }} ansible_user=${{ secrets.USER }}/" ansible/inventories/production/hosts
 
     - name: Test SSH connection
       run: |
         echo "Testing SSH connection..."
-        cd ansible
         ansible webservers -m ping -v
 
     - name: Run infrastructure setup
       run: |
-        cd ansible
-        ansible-playbook playbooks/setup-infrastructure.yml -v
+        ansible-playbook ansible/playbooks/setup-infrastructure.yml -v
 
     - name: Deploy application
       run: |
-        cd ansible
-        ansible-playbook playbooks/deploy-app.yml -v
+        ansible-playbook ansible/playbooks/deploy-app.yml -v
 
     - name: Test deployment
       run: |
