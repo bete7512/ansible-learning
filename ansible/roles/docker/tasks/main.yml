@@ -59,8 +59,10 @@
 
 - name: Alternative Docker service start (if systemd fails)
   shell: |
-    service docker start || /usr/bin/dockerd --config-file=/etc/docker/daemon.json > /dev/null 2>&1 &
-    sleep 5
+    service docker start || {
+      nohup /usr/bin/dockerd --config-file=/etc/docker/daemon.json > /var/log/docker.log 2>&1 &
+      sleep 10
+    }
   when: docker_service_result.failed | default(false)
   tags: [docker, service]
 
@@ -106,9 +108,18 @@
   changed_when: false
   tags: [docker, verification]
 
-- name: Display Docker version
+- name: Test Docker functionality
+  command: docker info
+  register: docker_info
+  ignore_errors: true
+  changed_when: false
+  tags: [docker, verification]
+
+- name: Display Docker status
   debug:
-    var: docker_version.stdout
+    msg: 
+      - "Docker version: {{ docker_version.stdout }}"
+      - "Docker daemon status: {{ 'Running' if docker_info.rc == 0 else 'Not Running' }}"
   tags: [docker, verification]
 
 - name: Configure Docker daemon
