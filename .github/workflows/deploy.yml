@@ -10,6 +10,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: production  # Add this line to use environment secrets
     
     steps:
     - name: Checkout code
@@ -18,6 +19,20 @@ jobs:
     - name: Setup SSH key
       run: |
         mkdir -p ~/.ssh
+        # Debug: Check if secrets exist (without printing actual values)
+        if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+          echo "ERROR: SSH_PRIVATE_KEY secret is empty!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.HOST }}" ]; then
+          echo "ERROR: HOST secret is empty!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.USER }}" ]; then
+          echo "ERROR: USER secret is empty!"
+          exit 1
+        fi
+        # Setup SSH key
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
