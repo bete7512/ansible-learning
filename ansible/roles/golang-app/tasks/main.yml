@@ -1,33 +1,8 @@
 # Go application deployment tasks
 ---
-- name: Debug file paths
-  debug:
-    msg: 
-      - "Playbook dir: {{ playbook_dir }}"
-      - "Looking for files at: {{ playbook_dir }}/../../"
-      - "Repository root should be: {{ playbook_dir }}/../../"
-  tags: [app, files, debug]
-
-- name: Check if source files exist
-  stat:
-    path: "{{ playbook_dir }}/../../{{ item }}"
-  register: source_files_check
-  loop:
-    - main.go
-    - Dockerfile
-    - go.mod
-  delegate_to: localhost
-  tags: [app, files, debug]
-
-- name: Display source files status
-  debug:
-    msg: "{{ item.item }}: {{ 'EXISTS' if item.stat.exists else 'MISSING' }} at {{ item.stat.path | default('N/A') }}"
-  loop: "{{ source_files_check.results }}"
-  tags: [app, files, debug]
-
-- name: Copy application source files (primary method)
+- name: Copy application source files
   copy:
-    src: "{{ playbook_dir }}/../../{{ item }}"
+    src: "{{ item }}"
     dest: "{{ app_deploy_path }}/"
     owner: "{{ app_name }}"
     group: "{{ app_name }}"
@@ -36,23 +11,6 @@
     - main.go
     - Dockerfile
     - go.mod
-  register: copy_result
-  ignore_errors: true
-  notify: rebuild app
-  tags: [app, files]
-
-- name: Alternative file copy (if primary fails)
-  copy:
-    src: "{{ inventory_dir }}/../../{{ item }}"
-    dest: "{{ app_deploy_path }}/"
-    owner: "{{ app_name }}"
-    group: "{{ app_name }}"
-    mode: '0644'
-  loop:
-    - main.go
-    - Dockerfile
-    - go.mod
-  when: copy_result is failed
   notify: rebuild app
   tags: [app, files]
 
