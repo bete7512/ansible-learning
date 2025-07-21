@@ -29,6 +29,7 @@ required_files=(
     "ansible/roles/golang-app/tasks/main.yml"
     "main.go"
     "Dockerfile"
+    "go.mod"
 )
 
 for file in "${required_files[@]}"; do
@@ -39,22 +40,27 @@ for file in "${required_files[@]}"; do
     fi
 done
 
-# Test 3: Syntax check
+# Test 3: Prepare files for Ansible (like CI does)
 echo ""
-echo "3. Checking Ansible playbook syntax..."
-cd ansible
-if ansible-playbook --syntax-check playbooks/site.yml >/dev/null 2>&1; then
+echo "3. Preparing application files for Ansible..."
+mkdir -p ansible/roles/golang-app/files
+cp main.go Dockerfile go.mod ansible/roles/golang-app/files/ 2>/dev/null || echo "⚠️ Some files may be missing but continuing..."
+echo "✅ Files prepared for Ansible"
+
+# Test 4: Syntax check
+echo ""
+echo "4. Checking Ansible playbook syntax..."
+if ansible-playbook --syntax-check ansible/playbooks/site.yml >/dev/null 2>&1; then
     echo "✅ Playbook syntax is valid"
 else
     echo "❌ Playbook syntax has errors"
-    ansible-playbook --syntax-check playbooks/site.yml
+    ansible-playbook --syntax-check ansible/playbooks/site.yml
     exit 1
 fi
 
-# Test 4: Check Go application
+# Test 5: Check Go application
 echo ""
-echo "4. Testing Go application..."
-cd ..
+echo "5. Testing Go application..."
 if go mod verify >/dev/null 2>&1 && go build -v ./... >/dev/null 2>&1; then
     echo "✅ Go application builds successfully"
 else
@@ -63,9 +69,9 @@ else
     exit 1
 fi
 
-# Test 5: Check Docker build
+# Test 6: Check Docker build
 echo ""
-echo "5. Testing Docker build..."
+echo "6. Testing Docker build..."
 if docker build -t users-api:test . >/dev/null 2>&1; then
     echo "✅ Docker image builds successfully"
     docker rmi users-api:test >/dev/null 2>&1
@@ -77,8 +83,15 @@ fi
 
 echo ""
 echo "🎉 All tests passed! Your deployment setup is ready."
+
+# Cleanup: Remove copied files
+echo ""
+echo "🧹 Cleaning up test files..."
+rm -f ansible/roles/golang-app/files/main.go ansible/roles/golang-app/files/Dockerfile ansible/roles/golang-app/files/go.mod 2>/dev/null || true
+echo "✅ Cleanup complete"
+
 echo ""
 echo "Next steps:"
-echo "1. Set up GitHub Secrets: SSH_PRIVATE_KEY, ANSIBLE_HOST, ANSIBLE_USER"
+echo "1. Set up GitHub Secrets: SSH_PRIVATE_KEY, HOST, USER"
 echo "2. Push to main branch to trigger deployment"
-echo "3. Or run manually: cd ansible && ansible-playbook playbooks/site.yml" 
+echo "3. Or run manually: ansible-playbook ansible/playbooks/site.yml" 

@@ -60,26 +60,22 @@ ansible/
 
 ### Test Syntax
 ```bash
-cd ansible
-ansible-playbook --syntax-check playbooks/site.yml
+ansible-playbook --syntax-check ansible/playbooks/site.yml
 ```
 
 ### Test Connection
 ```bash
-cd ansible  
 ansible webservers -m ping
 ```
 
 ### Full Deployment
 ```bash
-cd ansible
-ansible-playbook playbooks/site.yml -v
+ansible-playbook ansible/playbooks/site.yml -v
 ```
 
 ### Deploy Only App (Skip Infrastructure)
 ```bash
-cd ansible
-ansible-playbook playbooks/deploy-app.yml --tags "app"
+ansible-playbook ansible/playbooks/deploy-app.yml --tags "app"
 ```
 
 ## 🤖 GitHub Actions CI/CD

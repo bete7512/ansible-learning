@@ -1,2 +1,35 @@
-.dev
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Ansible
+*.retry
+.vault_password
+
+# Files copied by CI to Ansible roles (don't commit these)
+ansible/roles/*/files/main.go
+ansible/roles/*/files/Dockerfile
+ansible/roles/*/files/go.mod
+
+# Build artifacts
 users-api
+.dev
