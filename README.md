@@ -97,8 +97,8 @@ Set these in your repository settings:
 | Secret | Description | Example |
 |--------|-------------|---------|
 | `SSH_PRIVATE_KEY` | Private SSH key for server access | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `ANSIBLE_HOST` | Target server IP address | `64.226.109.101` |
-| `ANSIBLE_USER` | SSH username for the server | `root` |
+| `HOST` | Target server IP address | `64.226.109.101` |
+| `USER` | SSH username for the server | `root` |
 
 ### Workflow Triggers
 - **Push to main**: Triggers full test + deploy pipeline
@@ -165,6 +165,13 @@ The deployment follows this sequence:
 ## 🐛 Troubleshooting
 
 ### Common Issues
+
+**Docker Service Startup Issues**:
+The most common deployment issue is Docker failing to start in CI environments. Our playbook includes automatic fallbacks, but if you encounter:
+```
+Unable to start service docker: Job for docker.service failed
+```
+See detailed solutions in [DOCKER_TROUBLESHOOTING.md](DOCKER_TROUBLESHOOTING.md).
 
 **Connection Issues**:
 ```bash

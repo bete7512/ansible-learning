@@ -2,7 +2,7 @@
 ---
 - name: Copy application source files
   copy:
-    src: "{{ playbook_dir }}/../{{ item }}"
+    src: "{{ playbook_dir }}/../../{{ item }}"
     dest: "{{ app_deploy_path }}/"
     owner: "{{ app_name }}"
     group: "{{ app_name }}"
