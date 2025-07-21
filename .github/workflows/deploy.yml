@@ -1,0 +1,51 @@
+name: Deploy Go API
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+
+    - name: Install Ansible
+      run: |
+        sudo apt update
+        sudo apt install -y ansible
+
+    - name: Create inventory file
+      run: |
+        echo "[servers]" > inventory.ini
+        echo "${{ secrets.HOST }} ansible_user=${{ secrets.USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa" >> inventory.ini
+        echo "" >> inventory.ini
+        echo "[all:vars]" >> inventory.ini
+        echo "ansible_python_interpreter=/usr/bin/python3" >> inventory.ini
+
+    - name: Create Nginx template directory
+      run: mkdir -p templates
+
+    - name: Copy Nginx template
+      run: cp nginx.conf.j2 templates/
+
+    - name: Run Ansible playbook
+      run: |
+        ansible-playbook -i inventory.ini deploy.yml -v
+
+    - name: Test deployment
+      run: |
+        sleep 30
+        curl -f http://${{ secrets.HOST }}/users || exit 1
