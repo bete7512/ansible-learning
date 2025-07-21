@@ -57,12 +57,24 @@
   ignore_errors: true
   tags: [docker, service]
 
+- name: Check if running in CI environment
+  set_fact:
+    is_ci_environment: "{{ ansible_env.CI is defined or ansible_env.GITHUB_ACTIONS is defined }}"
+  tags: [docker, service]
+
 - name: Alternative Docker service start (if systemd fails)
   shell: |
-    service docker start || {
-      nohup /usr/bin/dockerd --config-file=/etc/docker/daemon.json > /var/log/docker.log 2>&1 &
-      sleep 10
-    }
+    if [ "{{ is_ci_environment }}" = "True" ]; then
+      # In CI environments, start Docker daemon directly
+      nohup /usr/bin/dockerd --config-file=/etc/docker/daemon.json --host=unix:///var/run/docker.sock > /var/log/docker.log 2>&1 &
+      sleep 15
+    else
+      # Try service command first, then fall back to direct daemon start
+      service docker start || {
+        nohup /usr/bin/dockerd --config-file=/etc/docker/daemon.json > /var/log/docker.log 2>&1 &
+        sleep 10
+      }
+    fi
   when: docker_service_result.failed | default(false)
   tags: [docker, service]
 
