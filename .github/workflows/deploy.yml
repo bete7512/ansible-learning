@@ -50,11 +50,8 @@ jobs:
         echo "[all:vars]" >> inventory.ini
         echo "ansible_python_interpreter=/usr/bin/python3" >> inventory.ini
 
-    - name: Create Nginx template directory
-      run: mkdir -p templates
-
-    - name: Copy Nginx template
-      run: cp nginx.conf.j2 templates/
+    - name: Verify Nginx template exists
+      run: ls -la templates/nginx.conf.j2
 
     - name: Run Ansible playbook
       run: |
