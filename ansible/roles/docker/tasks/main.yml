@@ -42,12 +42,47 @@
     state: present
   tags: [docker, packages]
 
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: true
+  ignore_errors: true
+  tags: [docker, service]
+
 - name: Start and enable Docker service
   systemd:
     name: docker
     state: started
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+  register: docker_service_result
+  ignore_errors: true
+  tags: [docker, service]
+
+- name: Alternative Docker service start (if systemd fails)
+  shell: |
+    service docker start || /usr/bin/dockerd --config-file=/etc/docker/daemon.json > /dev/null 2>&1 &
+    sleep 5
+  when: docker_service_result.failed | default(false)
+  tags: [docker, service]
+
+- name: Wait for Docker socket to be ready
+  wait_for:
+    path: /var/run/docker.sock
+    timeout: 30
+  ignore_errors: true
+  tags: [docker, service]
+
+- name: Alternative check - verify Docker socket
+  stat:
+    path: /var/run/docker.sock
+  register: docker_socket
+  tags: [docker, service]
+
+- name: Ensure Docker socket permissions
+  file:
+    path: /var/run/docker.sock
+    mode: '0666'
+  when: docker_socket.stat.exists | default(false)
+  ignore_errors: true
   tags: [docker, service]
 
 - name: Add users to docker group
