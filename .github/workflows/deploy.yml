@@ -51,6 +51,13 @@ jobs:
         # Update the production inventory with current host from secrets
         sed -i "s/userapi ansible_host=.*/userapi ansible_host=${{ secrets.HOST }} ansible_user=${{ secrets.USER }}/" ansible/inventories/production/hosts
 
+    - name: Prepare application files for Ansible
+      run: |
+        # Create the files directory that Ansible expects
+        mkdir -p ansible/roles/golang-app/files
+        # Copy application files to where Ansible can find them
+        cp main.go Dockerfile go.mod ansible/roles/golang-app/files/
+
     - name: Test SSH connection
       run: |
         echo "Testing SSH connection..."
