@@ -24,12 +24,12 @@ jobs:
           echo "ERROR: SSH_PRIVATE_KEY secret is empty!"
           exit 1
         fi
-        if [ -z "${{ secrets.ANSIBLE_HOST }}" ]; then
-          echo "ERROR: ANSIBLE_HOST secret is empty!"
+        if [ -z "${{ secrets.HOST }}" ]; then
+          echo "ERROR: HOST secret is empty!"
           exit 1
         fi
-        if [ -z "${{ secrets.ANSIBLE_USER }}" ]; then
-          echo "ERROR: ANSIBLE_USER secret is empty!"
+        if [ -z "${{ secrets.USER }}" ]; then
+          echo "ERROR: USER secret is empty!"
           exit 1
         fi
         
@@ -38,7 +38,7 @@ jobs:
         chmod 600 ~/.ssh/id_ed25519
         
         # Add host to known_hosts
-        ssh-keyscan -H ${{ secrets.ANSIBLE_HOST }} >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
 
     - name: Install Ansible
       run: |
@@ -50,7 +50,7 @@ jobs:
       run: |
         # Update the production inventory with current host from secrets
         cd ansible
-        sed -i "s/userapi ansible_host=.*/userapi ansible_host=${{ secrets.ANSIBLE_HOST }} ansible_user=${{ secrets.ANSIBLE_USER }}/" inventories/production/hosts
+        sed -i "s/userapi ansible_host=.*/userapi ansible_host=${{ secrets.HOST }} ansible_user=${{ secrets.USER }}/" inventories/production/hosts
 
     - name: Test SSH connection
       run: |
@@ -79,6 +79,6 @@ jobs:
       run: |
         sleep 30
         echo "Testing API endpoints..."
-        curl -f http://${{ secrets.ANSIBLE_HOST }}/health
-        curl -f http://${{ secrets.ANSIBLE_HOST }}/users
+        curl -f http://${{ secrets.HOST }}/health
+        curl -f http://${{ secrets.HOST }}/users
         echo "Deployment successful!"
