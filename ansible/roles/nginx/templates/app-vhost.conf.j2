@@ -28,7 +28,7 @@ server {
     # Rate limiting
     limit_req zone={{ app_name }}_rate_limit burst=20 nodelay;
 
-    # Health check endpoint (bypass rate limiting)
+    # Health check endpoint (no rate limiting)
     location /health {
         proxy_pass http://{{ app_name }}_backend;
         proxy_set_header Host $host;
@@ -41,8 +41,8 @@ server {
         proxy_send_timeout 10s;
         proxy_read_timeout 10s;
         
-        # Bypass rate limiting for health checks
-        limit_req off;
+        # No rate limiting applied to health checks
+        access_log off;
     }
 
     # API endpoints
