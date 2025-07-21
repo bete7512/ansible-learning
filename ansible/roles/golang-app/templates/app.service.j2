@@ -1,0 +1,45 @@
+# {{ ansible_managed }}
+# Systemd service file for {{ app_name }}
+
+[Unit]
+Description={{ app_name }} - Go API Service
+Documentation=https://github.com/yourusername/{{ app_name }}
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=forking
+User={{ app_name }}
+Group={{ app_name }}
+WorkingDirectory={{ app_deploy_path }}
+
+# Start command
+ExecStart=/usr/bin/docker run -d \
+    --name {{ app_name }} \
+    --restart always \
+    -p 127.0.0.1:{{ app_port }}:8080 \
+    -v {{ app_config_path }}:/app/config:ro \
+    -v {{ app_log_path }}:/app/logs \
+    -e APP_ENV={{ app_environment }} \
+    -e APP_PORT=8080 \
+    -e CONFIG_PATH=/app/config/config.json \
+    --memory {{ docker_container_memory }} \
+    --cpus {{ docker_container_cpu_limit }} \
+    {{ app_name }}:{{ app_version }}
+
+# Stop command  
+ExecStop=/usr/bin/docker stop {{ app_name }}
+ExecStopPost=/usr/bin/docker rm {{ app_name }}
+
+# Restart settings
+Restart=always
+RestartSec=10
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+# Security
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target 

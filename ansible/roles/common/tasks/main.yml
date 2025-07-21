@@ -1,0 +1,71 @@
+# Common server setup tasks
+---
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags: [packages]
+
+- name: Install essential packages
+  package:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - unzip
+      - software-properties-common
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+  tags: [packages]
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+  notify: restart cron
+  tags: [system]
+
+- name: Configure NTP
+  package:
+    name: ntp
+    state: present
+  tags: [system, ntp]
+
+- name: Start and enable NTP service
+  systemd:
+    name: ntp
+    state: started
+    enabled: yes
+  tags: [system, ntp]
+
+- name: Configure firewall (UFW)
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+  loop: "{{ firewall_allowed_ports }}"
+  tags: [security, firewall]
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+  tags: [security, firewall]
+
+- name: Create log rotation for application
+  template:
+    src: logrotate.j2
+    dest: "/etc/logrotate.d/{{ app_name }}"
+    mode: '0644'
+  tags: [logging]
+
+- name: Ensure system is up to date
+  package:
+    name: "*"
+    state: latest
+  when: update_all_packages | default(false)
+  tags: [packages, updates]

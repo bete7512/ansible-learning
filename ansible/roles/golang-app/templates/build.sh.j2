@@ -1,0 +1,24 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Build script for {{ app_name }}
+
+set -e
+
+echo "Building {{ app_name }} version {{ app_version }}"
+
+# Create go.mod if it doesn't exist
+if [ ! -f "go.mod" ]; then
+    echo "Creating go.mod file..."
+    go mod init {{ app_name }}
+fi
+
+# Build the Docker image
+docker build \
+    --build-arg VERSION="{{ app_version }}" \
+    --build-arg BUILD_TIME="{{ ansible_date_time.iso8601 }}" \
+    -t {{ app_name }}:{{ app_version }} \
+    -t {{ app_name }}:latest \
+    .
+
+echo "Build completed successfully!"
+echo "Image: {{ app_name }}:{{ app_version }}" 

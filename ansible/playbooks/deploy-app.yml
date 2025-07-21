@@ -1,0 +1,52 @@
+# Application deployment playbook
+---
+- name: Deploy Go API application
+  hosts: webservers
+  become: true
+  gather_facts: true
+  tags: [deployment, app]
+  
+  pre_tasks:
+    - name: Create application user
+      user:
+        name: "{{ app_name }}"
+        system: yes
+        shell: /bin/false
+        home: "{{ app_deploy_path }}"
+        create_home: no
+      tags: [users]
+
+    - name: Create application directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ app_name }}"
+        group: "{{ app_name }}"
+        mode: '0755'
+      loop:
+        - "{{ app_deploy_path }}"
+        - "{{ app_config_path }}"
+        - "{{ app_log_path }}"
+      tags: [directories]
+
+  roles:
+    - golang-app
+
+  post_tasks:
+    - name: Verify application is running
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      retries: 3
+      delay: 10
+      tags: [verification]
+
+    - name: Display application status
+      debug:
+        msg: 
+          - "Application {{ app_name }} deployed successfully!"
+          - "Version: {{ app_version }}"
+          - "Access URL: http://{{ ansible_host }}/users"
+          - "Health check: http://{{ ansible_host }}/health"
+      tags: [verification]

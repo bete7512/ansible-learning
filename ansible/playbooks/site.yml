@@ -1,0 +1,8 @@
+# Master playbook that orchestrates all deployments
+---
+- name: Setup infrastructure for all servers
+  import_playbook: setup-infrastructure.yml
+
+- name: Deploy applications
+  import_playbook: deploy-app.yml
+  when: deploy_app | default(true)

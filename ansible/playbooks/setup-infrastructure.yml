@@ -1,0 +1,40 @@
+# Infrastructure setup playbook
+---
+- name: Setup common infrastructure
+  hosts: all
+  become: true
+  gather_facts: true
+  tags: [infrastructure, common]
+  roles:
+    - common
+    - docker
+
+- name: Setup web servers
+  hosts: webservers
+  become: true
+  gather_facts: true
+  tags: [infrastructure, webserver]
+  roles:
+    - nginx
+
+- name: Setup database servers
+  hosts: database
+  become: true
+  gather_facts: true
+  tags: [infrastructure, database]
+  tasks:
+    - name: Database setup placeholder
+      debug:
+        msg: "Database setup would go here"
+      when: "'database' in group_names"
+
+- name: Setup monitoring
+  hosts: monitoring
+  become: true
+  gather_facts: true
+  tags: [infrastructure, monitoring]
+  tasks:
+    - name: Monitoring setup placeholder
+      debug:
+        msg: "Monitoring setup would go here"
+      when: "'monitoring' in group_names"

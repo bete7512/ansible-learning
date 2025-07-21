@@ -1,3 +1,3 @@
-module github.com/bete7512/ansible-learning
+module users-api
 
-go 1.23.2
+go 1.21

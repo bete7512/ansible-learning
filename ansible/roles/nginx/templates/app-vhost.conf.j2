@@ -1,0 +1,117 @@
+# {{ ansible_managed }}
+# Virtual host configuration for {{ app_name }}
+
+upstream {{ app_name }}_backend {
+    server 127.0.0.1:{{ app_port }} max_fails=3 fail_timeout=30s;
+    # Add more backend servers here for load balancing
+    # server 127.0.0.1:8081 max_fails=3 fail_timeout=30s;
+}
+
+# Rate limiting
+limit_req_zone $binary_remote_addr zone={{ app_name }}_rate_limit:10m rate=10r/s;
+
+server {
+    listen {{ nginx_port }};
+    server_name {{ ansible_host }} _;
+    
+    # Security headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer-when-downgrade" always;
+    add_header Content-Security-Policy "default-src 'self'" always;
+
+    # Logs
+    access_log /var/log/nginx/{{ app_name }}_access.log;
+    error_log /var/log/nginx/{{ app_name }}_error.log;
+
+    # Rate limiting
+    limit_req zone={{ app_name }}_rate_limit burst=20 nodelay;
+
+    # Health check endpoint (bypass rate limiting)
+    location /health {
+        proxy_pass http://{{ app_name }}_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Health check specific settings
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
+        
+        # Bypass rate limiting for health checks
+        limit_req off;
+    }
+
+    # API endpoints
+    location /users {
+        proxy_pass http://{{ app_name }}_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+        
+        # Proxy timeouts
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # API root - redirect to users endpoint
+    location = /api {
+        return 301 /users;
+    }
+
+    # Root location - API documentation or status page
+    location / {
+        proxy_pass http://{{ app_name }}_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Deny access to hidden files
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # Custom error pages
+    error_page 404 /404.html;
+    error_page 500 502 503 504 /50x.html;
+    
+    location = /404.html {
+        root /var/www/errors;
+        internal;
+    }
+    
+    location = /50x.html {
+        root /var/www/errors;
+        internal;
+    }
+}
+
+{% if ssl_enabled %}
+# SSL Configuration (if enabled)
+server {
+    listen {{ nginx_ssl_port }} ssl http2;
+    server_name {{ ansible_host }} _;
+    
+    ssl_certificate {{ ssl_cert_path }};
+    ssl_certificate_key {{ ssl_key_path }};
+    
+    # SSL Configuration
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_dhparam /etc/nginx/dhparam.pem;
+    
+    # Same location blocks as HTTP version
+    include /etc/nginx/sites-available/{{ app_name }}-locations;
+}
+{% endif %}

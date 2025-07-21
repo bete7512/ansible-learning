@@ -1,0 +1,17 @@
+{
+  "app": {
+    "name": "{{ app_name }}",
+    "version": "{{ app_version }}",
+    "environment": "{{ app_environment }}",
+    "port": {{ app_port }}
+  },
+  "logging": {
+    "level": "info",
+    "path": "{{ app_log_path }}"
+  },
+  "server": {
+    "read_timeout": 30,
+    "write_timeout": 30,
+    "idle_timeout": 120
+  }
+} 

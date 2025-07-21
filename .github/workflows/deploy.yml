@@ -1,4 +1,4 @@
-name: Deploy Go API
+name: Deploy Go API with Ansible
 
 on:
   push:
@@ -7,10 +7,30 @@ on:
     branches: [ main ]
 
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    environment: production  # Add this line to use environment secrets
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Test Go application
+      run: |
+        cd $GITHUB_WORKSPACE
+        go mod init users-api
+        go mod tidy
+        go test -v ./...
+        go build -v ./...
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
     
     steps:
     - name: Checkout code
@@ -24,40 +44,61 @@ jobs:
           echo "ERROR: SSH_PRIVATE_KEY secret is empty!"
           exit 1
         fi
-        if [ -z "${{ secrets.HOST }}" ]; then
-          echo "ERROR: HOST secret is empty!"
+        if [ -z "${{ secrets.ANSIBLE_HOST }}" ]; then
+          echo "ERROR: ANSIBLE_HOST secret is empty!"
           exit 1
         fi
-        if [ -z "${{ secrets.USER }}" ]; then
-          echo "ERROR: USER secret is empty!"
+        if [ -z "${{ secrets.ANSIBLE_USER }}" ]; then
+          echo "ERROR: ANSIBLE_USER secret is empty!"
           exit 1
         fi
-        # Setup SSH key
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
+        
+        # Setup SSH key with proper name expected by Ansible config
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        
+        # Add host to known_hosts
+        ssh-keyscan -H ${{ secrets.ANSIBLE_HOST }} >> ~/.ssh/known_hosts
 
     - name: Install Ansible
       run: |
         sudo apt update
-        sudo apt install -y ansible
+        sudo apt install -y ansible python3-pip
+        pip3 install docker
 
-    - name: Create inventory file
+    - name: Update Ansible inventory with current host
       run: |
-        echo "[servers]" > inventory.ini
-        echo "${{ secrets.HOST }} ansible_user=${{ secrets.USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa" >> inventory.ini
-        echo "" >> inventory.ini
-        echo "[all:vars]" >> inventory.ini
-        echo "ansible_python_interpreter=/usr/bin/python3" >> inventory.ini
+        # Update the production inventory with current host from secrets
+        cd ansible
+        sed -i "s/userapi ansible_host=.*/userapi ansible_host=${{ secrets.ANSIBLE_HOST }} ansible_user=${{ secrets.ANSIBLE_USER }}/" inventories/production/hosts
 
-    - name: Verify Nginx template exists
-      run: ls -la templates/nginx.conf.j2
-
-    - name: Run Ansible playbook
+    - name: Test SSH connection
       run: |
-        ansible-playbook -i inventory.ini deploy.yml -v
+        echo "Testing SSH connection..."
+        cd ansible
+        ansible webservers -m ping -v
+
+    - name: Copy application files to Ansible role
+      run: |
+        # Copy source files that the golang-app role expects
+        cp main.go ansible/roles/golang-app/files/
+        cp Dockerfile ansible/roles/golang-app/files/
+        cp go.mod ansible/roles/golang-app/files/ 2>/dev/null || echo "go.mod not found, will be created during build"
+
+    - name: Run infrastructure setup
+      run: |
+        cd ansible
+        ansible-playbook playbooks/setup-infrastructure.yml -v
+
+    - name: Deploy application
+      run: |
+        cd ansible
+        ansible-playbook playbooks/deploy-app.yml -v
 
     - name: Test deployment
       run: |
         sleep 30
-        curl -f http://${{ secrets.HOST }}/users || exit 1
+        echo "Testing API endpoints..."
+        curl -f http://${{ secrets.ANSIBLE_HOST }}/health
+        curl -f http://${{ secrets.ANSIBLE_HOST }}/users
+        echo "Deployment successful!"

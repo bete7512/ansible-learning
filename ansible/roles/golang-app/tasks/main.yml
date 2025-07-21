@@ -1,0 +1,115 @@
+# Go application deployment tasks
+---
+- name: Copy application source files
+  copy:
+    src: "{{ item }}"
+    dest: "{{ app_deploy_path }}/"
+    owner: "{{ app_name }}"
+    group: "{{ app_name }}"
+    mode: '0644'
+  loop:
+    - main.go
+    - Dockerfile
+  notify: rebuild app
+  tags: [app, files]
+
+- name: Copy application configuration
+  template:
+    src: app-config.json.j2
+    dest: "{{ app_config_path }}/config.json"
+    owner: "{{ app_name }}"
+    group: "{{ app_name }}"
+    mode: '0640'
+  notify: restart app
+  tags: [app, config]
+
+- name: Create Docker build script
+  template:
+    src: build.sh.j2
+    dest: "{{ app_deploy_path }}/build.sh"
+    owner: "{{ app_name }}"
+    group: "{{ app_name }}"
+    mode: '0755'
+  tags: [app, scripts]
+
+- name: Build Docker image
+  docker_image:
+    build:
+      path: "{{ app_deploy_path }}"
+      args:
+        VERSION: "{{ app_version }}"
+        BUILD_TIME: "{{ ansible_date_time.iso8601 }}"
+    name: "{{ app_name }}"
+    tag: "{{ app_version }}"
+    source: build
+    force_source: yes
+  register: docker_build_result
+  tags: [app, docker, build]
+
+- name: Tag latest version
+  docker_image:
+    name: "{{ app_name }}:{{ app_version }}"
+    repository: "{{ app_name }}:latest"
+    source: local
+  tags: [app, docker, build]
+
+- name: Stop existing application container
+  docker_container:
+    name: "{{ app_name }}"
+    state: absent
+  ignore_errors: true
+  tags: [app, docker, deploy]
+
+- name: Deploy application container
+  docker_container:
+    name: "{{ app_name }}"
+    image: "{{ app_name }}:{{ app_version }}"
+    state: started
+    restart_policy: "{{ docker_container_restart_policy }}"
+    published_ports:
+      - "127.0.0.1:{{ app_port }}:8080"
+    volumes:
+      - "{{ app_config_path }}:/app/config:ro"
+      - "{{ app_log_path }}:/app/logs"
+    env:
+      APP_ENV: "{{ app_environment }}"
+      APP_PORT: "8080"
+      CONFIG_PATH: "/app/config/config.json"
+    memory: "{{ docker_container_memory }}"
+    cpus: "{{ docker_container_cpu_limit }}"
+    log_driver: "json-file"
+    log_options:
+      max-size: "10m"
+      max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+  register: container_result
+  tags: [app, docker, deploy]
+
+- name: Wait for application to be healthy
+  uri:
+    url: "http://localhost:{{ app_port }}/health"
+    method: GET
+    status_code: 200
+  retries: 10
+  delay: 5
+  tags: [app, verification]
+
+- name: Create application systemd service (as backup)
+  template:
+    src: app.service.j2
+    dest: "/etc/systemd/system/{{ app_name }}.service"
+    mode: '0644'
+  notify: reload systemd
+  tags: [app, systemd]
+
+- name: Clean up old Docker images
+  shell: |
+    docker image prune -f --filter "until=24h"
+    docker images {{ app_name }} --format "table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedAt}}" | tail -n +2 | sort -k3 -r | tail -n +4 | awk '{print $2}' | xargs -r docker rmi
+  ignore_errors: true
+  tags: [app, docker, cleanup]

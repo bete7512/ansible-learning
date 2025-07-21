@@ -1,0 +1,32 @@
+# Global variables for all hosts
+---
+# Application Configuration
+app_name: users-api
+app_version: "1.0.0"
+app_port: 8080
+app_environment: production
+
+# Nginx Configuration
+nginx_port: 80
+nginx_ssl_port: 443
+nginx_worker_processes: auto
+
+# Docker Configuration
+docker_edition: ce
+docker_users:
+  - "{{ ansible_user }}"
+
+# Security
+firewall_allowed_ports:
+  - "22"    # SSH
+  - "80"    # HTTP
+  - "443"   # HTTPS
+
+# System Configuration
+timezone: "UTC"
+ntp_servers:
+  - "pool.ntp.org"
+
+# Monitoring
+enable_monitoring: true
+log_retention_days: 30

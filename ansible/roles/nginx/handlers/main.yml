@@ -1,0 +1,17 @@
+# Nginx handlers
+---
+- name: reload nginx
+  systemd:
+    name: nginx
+    state: reloaded
+
+- name: restart nginx
+  systemd:
+    name: nginx
+    state: restarted
+
+- name: test nginx config
+  command: nginx -t
+  register: nginx_syntax_check
+  changed_when: false
+  failed_when: nginx_syntax_check.rc != 0

@@ -1,0 +1,15 @@
+# Common handlers
+---
+- name: restart cron
+  systemd:
+    name: cron
+    state: restarted
+
+- name: restart ssh
+  systemd:
+    name: ssh
+    state: restarted
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes

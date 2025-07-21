@@ -1,0 +1,14 @@
+{{ app_log_path }}/*.log {
+    daily
+    missingok
+    rotate {{ log_retention_days }}
+    compress
+    delaycompress
+    notifempty
+    create 644 {{ app_name }} {{ app_name }}
+    postrotate
+        if [ -f /var/run/{{ app_name }}.pid ]; then
+            kill -USR1 `cat /var/run/{{ app_name }}.pid`
+        fi
+    endscript
+} 

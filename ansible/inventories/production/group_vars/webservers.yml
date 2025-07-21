@@ -1,0 +1,25 @@
+# Variables specific to webserver group
+---
+# Nginx specific configuration for webservers
+nginx_vhosts:
+  - listen: "{{ nginx_port }}"
+    server_name: "_"
+    root: "/var/www/html"
+    index: "index.html index.htm"
+    access_log: "/var/log/nginx/{{ app_name }}_access.log"
+    error_log: "/var/log/nginx/{{ app_name }}_error.log"
+
+# Application deployment settings
+app_deploy_path: "/opt/{{ app_name }}"
+app_config_path: "{{ app_deploy_path }}/config"
+app_log_path: "/var/log/{{ app_name }}"
+
+# Docker container settings
+docker_container_restart_policy: "always"
+docker_container_memory: "512m"
+docker_container_cpu_limit: "1.0"
+
+# SSL/TLS (if needed in future)
+ssl_enabled: false
+ssl_cert_path: "/etc/ssl/certs/{{ app_name }}.crt"
+ssl_key_path: "/etc/ssl/private/{{ app_name }}.key"

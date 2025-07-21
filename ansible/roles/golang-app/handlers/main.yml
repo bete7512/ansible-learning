@@ -1,0 +1,38 @@
+# Go application handlers
+---
+- name: rebuild app
+  docker_image:
+    build:
+      path: "{{ app_deploy_path }}"
+      args:
+        VERSION: "{{ app_version }}"
+        BUILD_TIME: "{{ ansible_date_time.iso8601 }}"
+    name: "{{ app_name }}"
+    tag: "{{ app_version }}"
+    source: build
+    force_source: yes
+  notify: restart app
+
+- name: restart app
+  docker_container:
+    name: "{{ app_name }}"
+    state: absent
+  register: stop_result
+  ignore_errors: true
+  notify: start app
+
+- name: start app
+  docker_container:
+    name: "{{ app_name }}"
+    image: "{{ app_name }}:{{ app_version }}"
+    state: started
+    restart_policy: "{{ docker_container_restart_policy }}"
+    published_ports:
+      - "127.0.0.1:{{ app_port }}:8080"
+    volumes:
+      - "{{ app_config_path }}:/app/config:ro"
+      - "{{ app_log_path }}:/app/logs"
+    env:
+      APP_ENV: "{{ app_environment }}"
+      APP_PORT: "8080"
+      CONFIG_PATH: "/app/config/config.json"
